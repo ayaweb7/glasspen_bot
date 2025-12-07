@@ -14,10 +14,10 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 # Токен бота (получите у @BotFather)
-BOT_TOKEN = "7918395635:AAEoAYwkrtorZqvwkksTB73QutUa0whCsBo"
+BOT_TOKEN = "791 ... CsBo"
 
 # ID чата для пересылки вопросов (можно узнать через @userinfobot)
-ADMIN_CHAT_ID = "7156086085"
+ADMIN_CHAT_ID = "71 ... 85"
 
 # Обработчик команды /start
 async def start_command(update: Update, context: CallbackContext) -> None:
