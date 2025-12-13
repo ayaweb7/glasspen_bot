@@ -4,41 +4,93 @@
 
 glasspen_bot/			# Корень проекта (корневая директория)
 │
-├── src/				# Основной код проекта (source)
-│	├── bot/
-│   │	├── handlers/
-│	│	│	└── __init__.py
+├── src/					# Основной код проекта (source)
+│	├── bots/				# Менеджер ботов
+│src/	├── glasspen_bot/	# Бот Стеклянного Пера
+│bots/	│	├── handlers/
+│	│	│	│	├── __init__.py
+│	│	│	│	└── commands.py
+│	│	│	│
+│   │	│	├── keyboards/
+│	│	│	│	├── __init__.py
+│	│	│	│	└── xxxx.py
+│	│	│	│
+│	│	│	├── __init__.py
+│	│	│	└── bot.py
+│	│	│
+│	│	│
+│src/	├── helper_bot/		# Бот Помощника
+│bots/│	│	├── handlers/
+│	│	│	│	├── __init__.py
+│	│	│	│	└── commands.py
+│	│	│	│
+│   │	│	├── keyboards/
+│	│	│	│	├── __init__.py
+│	│	│	│	└── xxxx.py
+│	│	│	│
+│	│	│	├── __init__.py
+│	│	│	└── bot.py
+│	│	│
+│	│	│		
+│	│	└── __init__.py
+│	│	
+│	├── bot/				# Рабочий вариант helper бота
+│src/	├── handlers/
+│bot/	│	├── __init__.py
+│	│	│	└── command_handlers.py
 │	│	│
 │	│	├── keyboards/
-│	│	│	└── __init__.py
+│	│	│	├── __init__.py
+│	│	│	└── main_menu.py
 │	│	│
 │	│	├── utils/
 │	│	│	└── __init__.py
 │	│	│
 │   │	├── __init__.py
+│   │	├── bot.py
 │   │	└── core.py
 │	│
 │	├── config/
-│   │	└── __init__.py
-│	│	
-│	├── main.py			# Исходный код
+│src/	└── __init__.py
+│	│
+│	├── core/
+│src/	├── __init__.py
+│core/	├── base_bot.py
+│	│	└── bot_manager.py
+│	│
+│	├── utils/
+│src/	└── logging_config.py
+│	│
+│	├── glasspen_bot.py		# Исходный код (для bot/)
+│	├── main.py				# Основной код (для bots/)
 │	└── __init__.py
 │
-├── tests/			# Директория для тестов
-│   └── test_main.py # Файл с тестами для main.py
+│
+├── tests/						# Директория для тестов
+│   ├── test_glasspen_bot.py 	# Файл с тестами для glasspen_bot.py
+│   └── test_main.py 			# Файл с тестами для main.py
+│
 │
 ├── docs/			# Документация проекта
 │   └── README.md	# Основной файл документации (можно создать позже)
+│
 │
 ├── data/			# Директория для входных/выходных данных, датасетов
 │   ├── bot.log		# Логгирование процессов
 │   ├── input/
 │   └── output/
 │
+│
 ├── logs/			# Директория для логов
-│   ├── loggs.log	# Логгирование процессов
+│   └── bot.log		# Логгирование процессов
+│
 │
 ├── notebooks/		# Эксперименты в Jupyter Notebooks (Опционально)
+│   └── glasspen_bot.ipynb		# Тестирование
+│
+│
+*****glasspen_bot/files*
+│
 │
 ├──  __init__.py
 ├── .gitignore		# Файл, для инструкций отслеживания файлов Git

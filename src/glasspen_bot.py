@@ -6,6 +6,12 @@ from telegram import Update, ReplyKeyboardMarkup, InlineKeyboardMarkup, InlineKe
 from telegram.ext import Application, CommandHandler, MessageHandler, filters, ContextTypes, CallbackQueryHandler
 from telegram.ext import CallbackContext
 
+# Добавляем корень проекта в путь Python
+sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
+
+from config import config
+from dotenv import load_dotenv
+
 # Настройка логирования
 logging.basicConfig(
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s',

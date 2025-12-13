@@ -5,6 +5,7 @@
 venv/
 .venv/
 env/
+__init__.py
 
 # Кэш Python
 __pycache__/
@@ -33,6 +34,10 @@ Thumbs.db
 *.log
 *.tmp
 # EOF # Завершение команды для редактирования через терминал
+
+# Ротационные логи
+logs/*.log.*
+logs/*.log.[0-9]*
 
 # --- the end
 # pip-tools
