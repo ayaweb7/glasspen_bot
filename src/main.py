@@ -42,7 +42,7 @@ def create_bots():
         if bot_name == "glasspen":
             bot_class = GlasspenBot
         elif bot_name == "helper":
-            bot_class = helperBot
+            bot_class = HelperBot
         else:
             logger.warning(f"Неизвестный тип бота: {bot_name}. Используем BaseBot.")
             from src.core.base_bot import BaseBot
@@ -50,7 +50,6 @@ def create_bots():
         
         # Создаём экземпляр бота
         bot = bot_class(
-            name=bot_name,
             token=bot_config.token,
             config={
                 'admin_ids': bot_config.admin_ids,
@@ -93,13 +92,21 @@ async def main_async():
         # Создаём ботов
         create_bots()
         
-        # Настройка обработки сигналов
-        loop = asyncio.get_running_loop()
-        for sig in (signal.SIGINT, signal.SIGTERM):
-            loop.add_signal_handler(
-                sig,
-                lambda s=sig: asyncio.create_task(shutdown(s, loop))
-            )
+        # Настройка обработки сигналов (кросс-платформенная версия)
+        try:
+            # Этот способ работает на Linux/macOS
+            loop = asyncio.get_running_loop()
+            for sig in (signal.SIGINT, signal.SIGTERM):
+                loop.add_signal_handler(
+                    sig,
+                    lambda s=sig: asyncio.create_task(shutdown(s, loop))
+                )
+        except NotImplementedError:
+            # Этот способ будет работать на Windows
+            # Здесь мы не можем использовать add_signal_handler, поэтому
+            # задача graceful shutdown будет обрабатываться в основном цикле
+            # или через обработку KeyboardInterrupt в asyncio.run()
+            logger.info("Обработка сигналов через add_signal_handler недоступна (Windows). Используем альтернативный метод.")
         
         # Запускаем менеджер ботов
         manager = get_bot_manager()

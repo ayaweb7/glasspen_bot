@@ -13,7 +13,7 @@ glasspen_bot/			# Корень проекта (корневая директор
 │	│	│	│
 │   │	│	├── keyboards/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── xxxx.py
+│	│	│	│	└── main_menu.py
 │	│	│	│
 │	│	│	├── __init__.py
 │	│	│	└── bot.py
@@ -26,7 +26,7 @@ glasspen_bot/			# Корень проекта (корневая директор
 │	│	│	│
 │   │	│	├── keyboards/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── xxxx.py
+│	│	│	│	└── main_menu.py
 │	│	│	│
 │	│	│	├── __init__.py
 │	│	│	└── bot.py

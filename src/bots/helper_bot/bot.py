@@ -8,11 +8,11 @@ from typing import List
 from telegram.ext import CallbackQueryHandler
 
 from src.core.base_bot import BaseBot
-from src.bots.glasspen_bot.handlers.commands import (
+from src.bots.helper_bot.handlers.commands import (
     get_handlers,
     button_callback_handler
 )
-from src.bots.glasspen_bot.keyboards.main_menu import get_main_keyboard
+from src.bots.helper_bot.keyboards.main_menu import get_main_keyboard
 
 logger = logging.getLogger(__name__)
 

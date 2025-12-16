@@ -4,7 +4,7 @@
 
 import asyncio
 import logging
-from typing import Dict, List, Optional
+from typing import Dict, List, Optional, Any
 from datetime import datetime
 
 from src.core.base_bot import BaseBot
@@ -42,13 +42,15 @@ class BotManager:
         results = await asyncio.gather(*tasks, return_exceptions=True)
         
         # Проверяем результаты
+        i = 1
         for bot_name, result in zip(self.bots.keys(), results):
             if isinstance(result, Exception):
-                logger.error(f"Ошибка при запуске бота {bot_name}: {result}")
+                logger.error(f"{i}. Ошибка при запуске бота {bot_name}: {result}")
             else:
-                logger.info(f"Бот {bot_name} запущен успешно")
+                logger.info(f"{i}. Бот {bot_name} запущен успешно!")
+            i+=1
         
-        logger.info(f"✅ Все боты запущены. Всего: {len(self.bots)}")
+        logger.info(f"✅ Все боты запущены! Всего ботов: {len(self.bots)}")
     
     async def stop_all(self):
         """Остановка всех ботов"""

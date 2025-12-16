@@ -1,25 +1,29 @@
 """
-Обработчики команд для Glasspen Bot.
+Обработчики команд для Helper Bot.
+Этот бот предназначен для [вставьте сюда его назначение, например, "управления задачами"].
 """
 
 import logging
 from telegram import Update
 from telegram.ext import ContextTypes, CommandHandler, MessageHandler, filters
-from datetime import datetime
 
-from src.bots.glasspen_bot.keyboards.main_menu import get_main_keyboard, get_inline_keyboard
+# Добавьте эти импорты после существующих строк импорта:
+from datetime import datetime
+from src.bots.helper_bot.keyboards.main_menu import get_main_keyboard, get_inline_keyboard
 
 logger = logging.getLogger(__name__)
+
+# --- Пример обработчиков команд. Их нужно адаптировать под задачи HelperBot ---
 
 async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /start"""
     user = update.effective_user
-    logger.info(f"[Glasspen] Пользователь {user.id} начал диалог")
+    logger.info(f"[Helper] Пользователь {user.id} начал диалог")
     
     welcome_text = f"""
 👋 Привет, {user.first_name}!
 
-Я — Glasspen Bot, твой личный помощник для ведения записей.
+Я — Helper Bot, твой личный помощник для ведения записей.
 
 ✨ Что я умею:
 • 📝 Создавать новые записи
@@ -42,7 +46,7 @@ async def start_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
 async def help_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """Обработчик команды /help"""
     help_text = """
-📚 **Помощь по командам Glasspen Bot:**
+📚 **Помощь по командам Helper Bot:**
 
 **Основные команды:**
 /start - Начать диалог с ботом
@@ -142,3 +146,4 @@ def get_handlers():
         MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message),
         # CallbackQueryHandler добавляется в классе бота
     ]
+

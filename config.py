@@ -40,12 +40,14 @@ class DatabaseConfig:
 class AppConfig:
     """Основная конфигурация приложения"""
     name: str = "Glasspen Bot System"
-    version: str = "1.0.0"
+    version: str = "2.0.0"
     log_level: str = "INFO"
     bots: Dict[str, BotConfig] = field(default_factory=dict)
     database: DatabaseConfig = field(default_factory=DatabaseConfig)
     
     def __init__(self):
+        # Инициализируем словарь ботов до загрузки конфигурации
+        self.bots = {}
         self.log_level = os.getenv("LOG_LEVEL", "INFO").upper()
         
         # Загружаем конфигурацию ботов из .env
@@ -134,7 +136,7 @@ class AppConfig:
         print(f"\n🔧 Зарегистрированные боты ({len(self.bots)}):")
         for bot_name, bot_config in self.bots.items():
             status = "✅" if bot_config.enabled else "⏸️"
-            token_preview = bot_config.token[:10] + "..." + bot_config.token[-5:]
+            token_preview = bot_config.token[:5] + " ... " + bot_config.token[-5:]
             print(f"  {status} {bot_name}:")
             print(f"    Токен: {token_preview}")
             print(f"    Админы: {bot_config.admin_ids}")
