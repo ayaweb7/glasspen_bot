@@ -113,7 +113,7 @@ async def main_async():
         
         logger.info("="*60)
         logger.info("🚀 Запуск системы ботов...")
-        logger.info("="*60)
+        logger.info("="*40)
         
         await manager.start_all()
         
@@ -140,7 +140,8 @@ def main():
     try:
         return asyncio.run(main_async())
     except KeyboardInterrupt:
-        logger.info("Работа завершена пользователем")
+        logger.info("Работа завершена пользователем ")
+        logger.info("="*40 +"\n" + "="*80 +"\n" + "="*80)
         return 0
     except Exception as e:
         logger.error(f"Неожиданная ошибка: {e}", exc_info=True)

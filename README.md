@@ -4,32 +4,33 @@
 
 glasspen_bot/			# Корень проекта (корневая директория)
 │
-├── src/					# Основной код проекта (source)
-│	├── bots/				# Менеджер ботов
-│src/	├── glasspen_bot/	# Бот Стеклянного Пера
+├── src/							# Основной код проекта (source)
+│	├── bots/						# Менеджер ботов
+│src/	├── glasspen_bot/			# Бот Стеклянного Пера
 │bots/	│	├── handlers/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── commands.py
+│	│	│	│	└── commands.py		# Обработчики команд
 │	│	│	│
 │   │	│	├── keyboards/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── main_menu.py
+│	│	│	│	└── main_menu.py	# Навигация, кнопки
 │	│	│	│
 │	│	│	├── __init__.py
-│	│	│	└── bot.py
+│	│	│	└── bot.py				# Основной файл бота
 │	│	│
 │	│	│
-│src/	├── helper_bot/		# Бот Помощника
+│src/	├── helper_bot/				# Бот Помощника
 │bots/│	│	├── handlers/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── commands.py
+│	│	│	│	└── commands.py		# Обработчики команд
 │	│	│	│
 │   │	│	├── keyboards/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── main_menu.py
+│	│	│	│	├── main_menu.py		# Навигация, кнопки
+│	│	│	│	└── inline_keyboards.py	# inline-кнопки
 │	│	│	│
 │	│	│	├── __init__.py
-│	│	│	└── bot.py
+│	│	│	└── bot.py				# Основной файл бота
 │	│	│
 │	│	│		
 │	│	└── __init__.py
@@ -55,8 +56,10 @@ glasspen_bot/			# Корень проекта (корневая директор
 │	│
 │	├── core/
 │src/	├── __init__.py
-│core/	├── base_bot.py
-│	│	└── bot_manager.py
+│core/	├── base_bot.py			# Базовый класс бота
+│	│	├── bot_manager.py		# Менеджер ботов
+│	│	├── note_manager.py		# Менеджер данных/записей
+│	│	└── models.py			# Основная модель данных/записей
 │	│
 │	├── utils/
 │src/	└── logging_config.py
