@@ -9,13 +9,19 @@ glasspen_bot/			# Корень проекта (корневая директор
 │src/	├── glasspen_bot/			# Бот Стеклянного Пера
 │bots/	│	├── handlers/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── commands.py		# Обработчики команд
+│	│	│	│	├── commands.py				# Обработчики основных команд /start, /help
+│	│	│	│	├── faq_handlers.py			# FAQ обработчик
+│	│	│	│	├── admin_commands.py		# Admin-команды
+│	│	│	│	└── question_handlers.py	# обработчик вопросов автору
 │	│	│	│
 │   │	│	├── keyboards/
 │	│	│	│	├── __init__.py
-│	│	│	│	└── main_menu.py	# Навигация, кнопки
+│	│	│	│	├── main_menu.py			# Навигация, кнопки
+│	│	│	│	├── faq_menu.py				# faq-кнопки
+│	│	│	│	└── inline_keyboards.py		# утилиты inline-кнопок
 │	│	│	│
 │	│	│	├── __init__.py
+│	│	│	├── states.py			# перенос FSM состояния из glasspen_bot
 │	│	│	└── bot.py				# Основной файл бота
 │	│	│
 │	│	│
@@ -56,10 +62,11 @@ glasspen_bot/			# Корень проекта (корневая директор
 │	│
 │	├── core/
 │src/	├── __init__.py
-│core/	├── base_bot.py			# Базовый класс бота
-│	│	├── bot_manager.py		# Менеджер ботов
-│	│	├── note_manager.py		# Менеджер данных/записей
-│	│	└── models.py			# Основная модель данных/записей
+│core/	├── base_bot.py				# Базовый класс бота
+│	│	├── bot_manager.py			# Менеджер ботов
+│	│	├── note_manager.py			# Менеджер данных/записей (для helper_bot)
+│	│	├── question_manager.py		# Менеджер вопросов (для glasspen_bot)
+│	│	└── models.py				# Основная модель данных/записей
 │	│
 │	├── utils/
 │src/	└── logging_config.py
@@ -79,9 +86,16 @@ glasspen_bot/			# Корень проекта (корневая директор
 │
 │
 ├── data/			# Директория для входных/выходных данных, датасетов
-│   ├── bot.log		# Логгирование процессов
+│	│
 │   ├── input/
-│   └── output/
+│data/	└── 
+│	│
+│   ├── output/
+│	│	└── 
+│	│
+│   ├── bot.log			# Логгирование процессов
+│   ├── questions.json	# Временное хранилище для вопросов
+│   └── notes.json		# Временное хранилище записей
 │
 │
 ├── logs/			# Директория для логов

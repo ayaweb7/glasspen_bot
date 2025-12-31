@@ -1,145 +1,380 @@
 """
-Обработчики команд и сообщений для Glasspen Bot (бота обратной связи).
+Обработчики команд для бота GlassPen
+Стиль python-telegram-bot (как helper_bot)
 """
-
 import logging
-from telegram import Update
-from telegram.ext import ContextTypes, MessageHandler, filters
+from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
+from telegram.ext import ContextTypes, ConversationHandler
 
 logger = logging.getLogger(__name__)
 
-# ---------- Обработчики команд (для /command) ----------
+# Состояния для ConversationHandler (должны совпадать с bot.py)
+ASKING_QUESTION = 1
 
-async def link_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /link"""
-    link_text = """
-📚 **Ссылка на наш канал:**
-[Литературный уголок](https://t.me/glass_pen)
+# Данные FAQ (временно, позже вынесем в отдельный файл/БД)
+FAQ_DATA = {
+    "1": {
+        "question": "Можно ли на вашем канале разместить свои стихи?",
+        "answer": (
+            "Можно. Пришлите свои стихи администратору канала на модерацию, "
+            "и стихи будут размещены в ближайшее время."
+        )
+    },
+    "2": {
+        "question": "Какие требования для присылаемых в адрес вашего канала стихов?",
+        "answer": (
+            "Требования к стихам:\n\n"
+            "• Корректная лексика\n"
+            "• Объём около 1500 символов или 300-400 слов\n"
+            "• Указание на авторство обязательно\n"
+            "• Ссылка на размещённое произведение (если имеется)"
+        )
+    },
+    "3": {
+        "question": "Как часто выходят новые публикации?",
+        "answer": (
+            "Специального расписания нет. Периодичность публикации полностью "
+            "зависит от вдохновения автора канала или подписчиков канала."
+        )
+    },
+    "4": {
+        "question": "Задайте свой вопрос автору канала",
+        "answer": (
+            "Чтобы задать свой вопрос, воспользуйтесь кнопкой "
+            "'Задать вопрос автору канала' в главном меню. "
+            "Автор постарается ответить вам в ближайшее время."
+        )
+    },
+    "5": {
+        "question": "Вакантный вопрос",
+        "answer": "—"
+    }
+}
 
-**Как поделиться конкретным постом?**
-1. Откройте нужный пост в канале
-2. Нажмите на кнопку "↗️" (Поделиться)
-3. Выберите "Скопировать ссылку"
-"""
-    await update.message.reply_text(link_text, parse_mode='Markdown')
 
-async def contents_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /contents - показывает инлайн-клавиатуру для выбора раздела"""
-    from src.bots.glasspen_bot.keyboards.main_menu import get_contents_keyboard
-    reply_markup = get_contents_keyboard()
+# ========== КОМАНДЫ ==========
+
+async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик команды /start
+    """
+    welcome_text = (
+        "👋 Добро пожаловать в бот канала 'Стеклянное Перо'!\n\n"
+        "📚 *Что я умею:*\n"
+        "• 📋 Показать ссылку на канал\n"
+        "• ❓ Ответить на частые вопросы\n"
+        "• ✏️ Принять ваш вопрос для автора канала\n\n"
+        "Выберите действие в меню ниже:"
+    )
+    
+    keyboard = get_main_menu_keyboard()
+    
     await update.message.reply_text(
-        "📚 **Выберите раздел:**",
-        reply_markup=reply_markup,
-        parse_mode='Markdown'
+        welcome_text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
     )
 
-async def question_command(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик команды /question - начинает диалог вопроса"""
-    instruction = """
-✍️ **Задать вопрос авторам**
 
-Опишите, пожалуйста, ваш вопрос или пожелание. Мы прочитаем его и постараемся ответить в ближайшее время.
+async def cmd_help(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик команды /help
+    """
+    help_text = (
+        "🆘 *Помощь по использованию бота:*\n\n"
+        "*Доступные команды:*\n"
+        "/start - Главное меню\n"
+        "/help - Эта справка\n"
+        "/channel - Получить ссылку на канал\n\n"
+        "*Основные функции:*\n"
+        "• Получить ссылку на канал 'Стеклянное Перо'\n"
+        "• Посмотреть ответы на частые вопросы (FAQ)\n"
+        "• Задать свой вопрос автору канала\n\n"
+        "Для навигации используйте кнопки меню."
+    )
+    
+    keyboard = get_main_menu_keyboard()
+    
+    await update.message.reply_text(
+        help_text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
 
-*Просто напишите ваш вопрос в чат...*
-"""
-    # Сохраняем состояние, что ждем вопрос
-    context.user_data['awaiting_question'] = True
-    await update.message.reply_text(instruction, parse_mode='Markdown')
 
-# ---------- Обработчики кнопок и сообщений ----------
+async def cmd_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик команды /channel
+    """
+    channel_link = "https://t.me/glass_pen/"
+    channel_text = (
+        "📢 *Канал 'Стеклянное Перо':*\n\n"
+        f"{channel_link}\n\n"
+        "Нажмите на ссылку выше или скопируйте её.\n"
+        "Подписывайтесь, чтобы быть в курсе новых публикаций!"
+    )
+    
+    keyboard = get_main_menu_keyboard()
+    
+    await update.message.reply_text(
+        channel_text,
+        parse_mode="Markdown",
+        reply_markup=keyboard
+    )
 
-async def handle_inline_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик нажатий на инлайн-кнопки (для разделов оглавления)"""
+
+# ========== CALLBACK ОБРАБОТЧИКИ ==========
+
+async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Показ главного меню (обработка callback)
+    """
     query = update.callback_query
     await query.answer()
-    data = query.data
+    
+    await query.edit_message_text(
+        "🏠 *Главное меню:*\n\n"
+        "Выберите действие:",
+        parse_mode="Markdown",
+        reply_markup=get_main_menu_keyboard()
+    )
 
-    # Генерация ответа в зависимости от раздела
-    if data == "love_poems":
-        response = "**Стихи о любви:**\n\n• 'Первая встреча'\n• 'Вечерний звон'\n• 'Без ответа'"
-    elif data == "prose":
-        response = "**Проза:**\n\n• 'Утренний туман'\n• 'Старый дом'"
-    elif data == "analysis":
-        response = "**Анализ произведений:**\n\n• 'Символика в поэзии'\n• 'Особенности стиля'"
+
+async def handle_faq_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Показ меню с частыми вопросами
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "❓ *Частые вопросы:*\n\n"
+        "Выберите вопрос, чтобы увидеть ответ:",
+        parse_mode="Markdown",
+        reply_markup=get_faq_menu_keyboard()
+    )
+
+
+async def handle_faq_answer(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Показ ответа на выбранный вопрос FAQ
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    # Извлекаем номер вопроса из callback_data (формат: faq:1)
+    faq_id = query.data.split(":")[1]
+    
+    if faq_id in FAQ_DATA:
+        faq = FAQ_DATA[faq_id]
+        
+        response_text = (
+            f"*Вопрос:* {faq['question']}\n\n"
+            f"*Ответ:* {faq['answer']}"
+        )
+        
+        await query.edit_message_text(
+            response_text,
+            parse_mode="Markdown",
+            reply_markup=get_back_to_faq_keyboard()
+        )
     else:
-        response = "Раздел не найден."
+        await query.answer("Вопрос не найден", show_alert=True)
 
-    await query.edit_message_text(response, parse_mode='Markdown')
 
-async def handle_text_message(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Главный обработчик ВСЕХ текстовых сообщений"""
-    user_data = context.user_data
-    text = update.message.text
+# ========== ОБРАБОТКА ВОПРОСОВ ==========
 
-    # 1. Проверяем, не нажата ли кнопка главного меню
-    if text in ["📚 Ссылка на канал", "📖 Оглавление", "❓ Задать вопрос авторам"]:
-        await handle_main_menu_buttons(update, context)
-        return
-
-    # 2. Проверяем, не ждём ли мы вопрос от пользователя
-    if user_data.get('awaiting_question'):
-        await process_user_question(update, context)
-        return
-
-    # 3. Если это любое другое текстовое сообщение
-    await update.message.reply_text(
-        "Используйте кнопки меню для навигации 🗺️",
-        parse_mode='Markdown'
+async def handle_ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Начало процесса задавания вопроса
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "✏️ *Задайте вопрос автору канала:*\n\n"
+        "Напишите ваш вопрос в одном сообщении.\n"
+        "Автор получит его и ответит в ближайшее время.\n\n"
+        "Или нажмите 'Отмена'.",
+        parse_mode="Markdown",
+        reply_markup=get_cancel_keyboard()
     )
+    
+    return ASKING_QUESTION
 
-async def handle_main_menu_buttons(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Обработчик нажатий на кнопки Reply-клавиатуры (главное меню)"""
-    text = update.message.text
-    if text == "📚 Ссылка на канал":
-        await link_command(update, context)
-    elif text == "📖 Оглавление":
-        await contents_command(update, context)
-    elif text == "❓ Задать вопрос авторам":
-        await question_command(update, context)
 
-async def process_user_question(update: Update, context: ContextTypes.DEFAULT_TYPE) -> None:
-    """Логика обработки и пересылки вопроса от пользователя"""
-    from src.bots.glasspen_bot.bot import GlasspenBot
-    # Получаем экземпляр нашего бота, чтобы иметь доступ к его конфигурации
-    # В конфигурации должны быть указаны admin_ids для пересылки
-    user = update.message.from_user
-    question_text = update.message.text
-
-    # Формируем сообщение для админа
-    admin_message = f"""
-❓ **Новый вопрос от** @{user.username or 'без username'} ({user.first_name}):
-
-{question_text}
-"""
-    # Логируем вопрос
-    logger.info(f"Вопрос от user_id={user.id}: {question_text[:100]}...")
-
-    # !!! ВАЖНО: Здесь нужна логика пересылки.
-    # 1-й вариант (рекомендуется): Сохраняем админские ID в config бота при его создании.
-    #    Тогда здесь мы можем получить бота из context и отправить сообщение.
-    #    Пока оставляем заглушку:
-    #    for admin_id in context.bot_data.get('admin_ids', []):
-    #        await context.bot.send_message(chat_id=admin_id, text=admin_message, parse_mode='Markdown')
-    #
-    # 2-й вариант: Отправлять во внешний канал/чат по ID (ADMIN_CHAT_ID).
-    #    Этот ID нужно будет добавить в extra_config бота в .env файле.
-    #    Пример: BOT_GLASSPEN_ADMIN_CHAT_ID=-1001234567890
-
-    # Временная заглушка - просто логируем
-    logger.info(f"Вопрос для админа: {admin_message}")
-
-    # Подтверждаем пользователю
+async def handle_question_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработка введенного вопроса
+    """
+    user_question = update.message.text
+    
+    # Здесь будет логика сохранения вопроса в JSON
+    # Пока просто выводим подтверждение
+    # Сохраняем вопрос в user_data для примера
+    context.user_data['last_question'] = {
+        'text': user_question,
+        'timestamp': update.message.date.isoformat()
+    }
+    
     await update.message.reply_text(
-        "✅ Спасибо! Ваш вопрос отправлен авторам. Мы ответим вам в ближайшее время.",
-        parse_mode='Markdown'
+        "✅ *Ваш вопрос получен!*\n\n"
+        f"Вопрос: {user_question[:100]}...\n\n"
+        "Автор канала получит ваш вопрос и ответит "
+        "в ближайшее время. Спасибо за обращение!\n\n"
+        "Вернуться в главное меню: /start",
+        parse_mode="Markdown"
     )
-    # Сбрасываем состояние
-    context.user_data['awaiting_question'] = False
+    
+    return ConversationHandler.END
+
+
+async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Отмена задания вопроса
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "❌ Ввод вопроса отменен.",
+        reply_markup=get_main_menu_keyboard()
+    )
+    
+    return ConversationHandler.END
+
+
+# ========== КЛАВИАТУРЫ ==========
+
+def get_main_menu_keyboard() -> InlineKeyboardMarkup:
+    """
+    Главное меню с тремя кнопками
+    """
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "Скопировать ссылку на канал",
+                callback_data="show_channel"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Ответы на частые вопросы",
+                callback_data="show_faq"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Задать вопрос автору канала",
+                callback_data="ask_question"
+            )
+        ]
+    ])
+    return keyboard
+
+
+def get_faq_menu_keyboard() -> InlineKeyboardMarkup:
+    """
+    Меню с вопросами FAQ
+    """
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton(
+                "Можно ли на вашем канале разместить свои стихи?",
+                callback_data="faq:1"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Какие требования для присылаемых стихов?",
+                callback_data="faq:2"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Как часто выходят новые публикации?",
+                callback_data="faq:3"
+            )
+        ],
+        [
+            InlineKeyboardButton(
+                "Задайте свой вопрос автору канала",
+                callback_data="faq:4"
+            )
+        ],
+        [
+            InlineKeyboardButton("Вакантный вопрос", callback_data="faq:5")
+        ],
+        [
+            InlineKeyboardButton("Назад", callback_data="main_menu"),
+            InlineKeyboardButton("Главное меню", callback_data="main_menu")
+        ]
+    ])
+    return keyboard
+
+
+def get_back_to_faq_keyboard() -> InlineKeyboardMarkup:
+    """
+    Кнопки для возврата из ответа FAQ
+    """
+    keyboard = InlineKeyboardMarkup([
+        [
+            InlineKeyboardButton("Назад", callback_data="show_faq"),
+            InlineKeyboardButton("Главное меню", callback_data="main_menu")
+        ]
+    ])
+    return keyboard
+
+
+def get_cancel_keyboard() -> InlineKeyboardMarkup:
+    """
+    Кнопка отмены для диалога
+    """
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Отмена", callback_data="cancel")]
+    ])
+    return keyboard
+
+
+# ========== РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ (для совместимости) ==========
 
 def get_handlers():
-    """Функция возвращает список обработчиков для регистрации в боте."""
-    # CommandHandler будут добавлены в классе бота на основе списка команд
+    """
+    Возвращает обработчики для регистрации (как в helper_bot)
+    """
+    from telegram.ext import (
+        CommandHandler,
+        CallbackQueryHandler,
+        MessageHandler,
+        filters,
+        ConversationHandler
+    )
+    
+    ASKING_QUESTION = 1
+    
+    question_conv_handler = ConversationHandler(
+        entry_points=[
+            CallbackQueryHandler(handle_ask_question, pattern="^ask_question$")
+        ],
+        states={
+            ASKING_QUESTION: [
+                MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question_input)
+            ]
+        },
+        fallbacks=[
+            CallbackQueryHandler(handle_cancel, pattern="^cancel$"),
+            CommandHandler("start", cmd_start)
+        ],
+        allow_reentry=True
+    )
+    
     return [
-        MessageHandler(filters.TEXT & ~filters.COMMAND, handle_text_message),
-        # CallbackQueryHandler будет добавлен отдельно в классе бота
+        CommandHandler("start", cmd_start),
+        CommandHandler("help", cmd_help),
+        CommandHandler("channel", cmd_channel),
+        CallbackQueryHandler(handle_main_menu, pattern="^main_menu$"),
+        CallbackQueryHandler(handle_faq_menu, pattern="^show_faq$"),
+        CallbackQueryHandler(handle_faq_answer, pattern="^faq:"),
+        question_conv_handler,
+        CallbackQueryHandler(handle_cancel, pattern="^cancel$")
     ]

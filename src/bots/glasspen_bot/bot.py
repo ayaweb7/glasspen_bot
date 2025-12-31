@@ -1,64 +1,83 @@
 """
-Конкретная реализация Glasspen Bot (бота обратной связи для канала).
+Основной файл бота GlassPen
+Используем python-telegram-bot (как helper_bot)
 """
-
 import logging
-from typing import List
-
-from telegram.ext import CommandHandler, CallbackQueryHandler
 
 from src.core.base_bot import BaseBot
-from src.bots.glasspen_bot.handlers.commands import (
-    link_command,
-    contents_command,
-    question_command,
-    handle_inline_buttons,
-    get_handlers
-)
-from src.bots.glasspen_bot.keyboards.main_menu import get_main_keyboard
 
 logger = logging.getLogger(__name__)
 
-class GlasspenBot(BaseBot):
-    """Glasspen Bot - бот для обратной связи в Telegram-канале."""
 
+class GlasspenBot(BaseBot):
+    """Бот для канала 'Стеклянное Перо'"""
+    
     def __init__(self, token: str, config: dict):
         super().__init__(name="glasspen", token=token, config=config)
-        # Можно сохранить специфичные данные из конфига, например, ID админского чата
-        self.admin_chat_id = config.get('admin_chat_id')  # Будет браться из extra_config в .env
-
-    async def start_command(self, update, context):
-        """Обработчик команды /start. Определён здесь, т.к. использует get_main_keyboard()."""
-        welcome_text = """
-        Приветствую в литературном уголке! 📚
-
-        Я помогу вам:
-        • Найти ссылку на наш канал
-        • Показать оглавление произведений
-        • Направить ваш вопрос авторам
-
-        Выберите действие ниже 👇
-        """
-        await update.message.reply_text(welcome_text, reply_markup=get_main_keyboard())
-
+        self.config = config
+        self.channel_link = config.get("channel_link", "https://t.me/glass_pen/")
+    
     def get_handlers(self):
-        """Получить все обработчики команд для этого бота."""
-        handlers = get_handlers()  # Базовые обработчики сообщений
-
-        # Явно добавляем обработчики команд
-        handlers.extend([
-            CommandHandler("start", self.start_command),
-            CommandHandler("link", link_command),
-            CommandHandler("contents", contents_command),
-            CommandHandler("question", question_command),
-        ])
-
-        # Добавляем обработчик инлайн-кнопок (для оглавления)
-        handlers.append(CallbackQueryHandler(handle_inline_buttons))
-
+        """
+        Возвращает список обработчиков для python-telegram-bot
+        """
+        from telegram.ext import (
+            CommandHandler,
+            CallbackQueryHandler,
+            MessageHandler,
+            filters,
+            ConversationHandler
+        )
+        
+        # Импортируем обработчики
+        from .handlers.commands import (
+            cmd_start,
+            cmd_help,
+            cmd_channel,
+            handle_main_menu,
+            handle_faq_menu,
+            handle_faq_answer,
+            handle_ask_question,
+            handle_question_input,
+            handle_cancel
+        )
+        
+        # Определяем состояния для ConversationHandler (как в helper_bot)
+        ASKING_QUESTION = 1
+        
+        # Создаём ConversationHandler для обработки вопросов
+        question_conv_handler = ConversationHandler(
+            entry_points=[
+                CallbackQueryHandler(handle_ask_question, pattern="^ask_question$")
+            ],
+            states={
+                ASKING_QUESTION: [
+                    MessageHandler(filters.TEXT & ~filters.COMMAND, handle_question_input)
+                ]
+            },
+            fallbacks=[
+                CallbackQueryHandler(handle_cancel, pattern="^cancel$"),
+                CommandHandler("start", cmd_start)
+            ],
+            allow_reentry=True
+        )
+        
+        # Собираем все обработчики
+        handlers = [
+            CommandHandler("start", cmd_start),
+            CommandHandler("help", cmd_help),
+            CommandHandler("channel", cmd_channel),
+            CallbackQueryHandler(handle_main_menu, pattern="^main_menu$"),
+            CallbackQueryHandler(handle_faq_menu, pattern="^show_faq$"),
+            CallbackQueryHandler(handle_faq_answer, pattern="^faq:"),
+            question_conv_handler,  # Используем ConversationHandler вместо простого MessageHandler
+            CallbackQueryHandler(handle_cancel, pattern="^cancel$")
+        ]
+        
         return handlers
 
-    async def setup(self):
-        """Дополнительная настройка бота."""
-        await super().setup()
-        logger.info(f"Glasspen Bot настроен. Админы: {self.config.get('admin_ids', [])}. Админ-чат: {self.admin_chat_id}")
+
+# Функция для создания экземпляра бота
+def create_bot(token: str, config: dict) -> GlasspenBot:
+    """Фабрика для создания экземпляра GlasspenBot"""
+    return GlasspenBot(token, config)
