@@ -5,6 +5,8 @@
 
 import os
 import logging
+import json
+import re
 from dataclasses import dataclass, field
 from typing import Dict, List, Any
 from dotenv import load_dotenv
@@ -60,14 +62,51 @@ class AppConfig:
             echo=os.getenv("DATABASE_ECHO", "false").lower() == "true"
         )
     
+    def _parse_admin_ids(self, admin_str: str) -> List[int]:
+        """
+        Парсит строку с admin_ids в список целых чисел.
+        Поддерживает форматы:
+        - JSON: "[7156086085]" или "[7156086085, 1938719365]"
+        - CSV: "7156086085" или "7156086085,1938719365"
+        - Смешанный: "[7156086085, 1938719365]" (удаляет скобки)
+        """
+        if not admin_str or admin_str.strip() == "":
+            return []
+        
+        admin_str = admin_str.strip()
+        
+        # Если строка начинается с '[' и заканчивается ']' - это JSON
+        if admin_str.startswith('[') and admin_str.endswith(']'):
+            try:
+                # Пробуем распарсить как JSON
+                ids = json.loads(admin_str)
+                if isinstance(ids, list):
+                    return [int(id_) for id_ in ids]
+            except (json.JSONDecodeError, ValueError) as e:
+                logging.warning(f"Не удалось распарсить JSON admin_ids: {admin_str}, ошибка: {e}")
+        
+        # Если не JSON, пробуем как CSV
+        try:
+            # Удаляем все квадратные скобки на всякий случай
+            clean_str = re.sub(r'[\[\]]', '', admin_str)
+            ids = []
+            for part in clean_str.split(','):
+                part = part.strip()
+                if part:
+                    ids.append(int(part))
+            return ids
+        except ValueError as e:
+            logging.warning(f"Не удалось распарсить CSV admin_ids: {admin_str}, ошибка: {e}")
+            return []
+    
     def _load_bots_config(self):
         """Загрузка конфигурации ботов из переменных окружения"""
         
         # Формат переменных:
         # BOT_GLASSPEN_TOKEN=токен1
-        # BOT_GLASSPEN_ADMIN_IDS=123,456
+        # BOT_GLASSPEN_ADMIN_IDS=[7156086085] или 7156086085,1938719365
         # BOT_HELPER_TOKEN=токен2
-        # BOT_HELPER_ADMIN_IDS=789
+        # BOT_HELPER_ADMIN_IDS=[1938719365]
         
         bot_prefixes = []
         
@@ -86,16 +125,15 @@ class AppConfig:
             if not token:
                 continue
             
-            # Администраторы
-            admin_ids = []
+            # Администраторы (ИСПРАВЛЕНО: используем новый парсер)
             admin_key = f"BOT_{prefix.upper()}_ADMIN_IDS"
             admin_str = os.getenv(admin_key, "")
-            if admin_str:
-                for admin_id in admin_str.split(','):
-                    try:
-                        admin_ids.append(int(admin_id.strip()))
-                    except ValueError:
-                        logging.warning(f"Неверный формат admin_id для бота {prefix}: {admin_id}")
+            
+            # Парсим admin_ids с поддержкой JSON и CSV
+            admin_ids = self._parse_admin_ids(admin_str)
+            
+            if admin_str and not admin_ids:
+                logging.warning(f"Неверный формат admin_id для бота {prefix}: {admin_str}")
             
             # Extra конфигурация
             extra_config = {}

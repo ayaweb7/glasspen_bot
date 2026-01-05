@@ -32,6 +32,16 @@ def create_bots():
     """Создание и регистрация всех ботов"""
     manager = get_bot_manager()
     
+    # ДОБАВИТЬ ДЛЯ ОТЛАДКИ:
+    print(f"\n=== DEBUG: ВСЯ КОНФИГУРАЦИЯ ===")
+    print(f"config.bots.glasspen = {config.bots['glasspen']}")
+    print(f"Токен: {config.bots['glasspen'].token}")
+    print(f"Admin IDs: {config.bots['glasspen'].admin_ids}")
+    print(f"Extra config: {config.bots['glasspen'].extra_config}")
+    print("="*50 + "\n")
+    
+    bots = []
+    
     # Создаём и регистрируем всех ботов из конфигурации
     for bot_name, bot_config in config.bots.items():
         if not bot_config.enabled:
@@ -48,18 +58,29 @@ def create_bots():
             from src.core.base_bot import BaseBot
             bot_class = BaseBot
         
+        # СОБИРАЕМ ПОЛНЫЙ КОНФИГ ДЛЯ БОТА
+        bot_full_config = {
+            'admin_ids': bot_config.admin_ids,
+            **bot_config.extra_config
+        }
+        
+        # ДОБАВИМ ОТЛАДОЧНЫЙ ВЫВОД
+        print(f"=== DEBUG: Конфиг для бота {bot_name} ===")
+        print(f"bot_full_config = {bot_full_config}")
+        print(f"admin_chat_id = {bot_full_config.get('admin_chat_id')}")
+        print("="*30)
+        
         # Создаём экземпляр бота
         bot = bot_class(
             token=bot_config.token,
-            config={
-                'admin_ids': bot_config.admin_ids,
-                **bot_config.extra_config
-            }
+            config=bot_full_config  # ← передаём полный конфиг
         )
         
         # Регистрируем в менеджере
         manager.register_bot(bot)
         logger.info(f"Создан бот: {bot_name}")
+    
+    return manager
 
 async def shutdown(signal, loop):
     """Корректное завершение работы"""

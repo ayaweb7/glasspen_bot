@@ -1,10 +1,12 @@
 """
 Обработчики команд для бота GlassPen
 Стиль python-telegram-bot (как helper_bot)
+question_text
 """
 import logging
 from telegram import Update, InlineKeyboardMarkup, InlineKeyboardButton
 from telegram.ext import ContextTypes, ConversationHandler
+from src.core.question_manager import question_manager
 
 logger = logging.getLogger(__name__)
 
@@ -53,6 +55,26 @@ FAQ_DATA = {
 
 
 # ========== КОМАНДЫ ==========
+def escape_markdown(text: str) -> str:
+    """
+    Экранирует спецсимволы Markdown
+    """
+    if not text:
+        return ""
+    
+    # Список символов для экранирования
+    escape_chars = r'_*[]()~`>#+-=|{}.!'
+    
+    # Экранируем каждый символ
+    result = ""
+    for char in text:
+        if char in escape_chars:
+            result += '\\' + char
+        else:
+            result += char
+    
+    return result
+
 
 async def cmd_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -139,6 +161,31 @@ async def handle_main_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
         reply_markup=get_main_menu_keyboard()
     )
 
+async def handle_show_channel(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработка кнопки "Скопировать ссылку на канал"
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    channel_link = "https://t.me/glass_pen/"
+    channel_text = (
+        "📢 Канал 'Стеклянное Перо':\n\n"
+        f"{channel_link}\n\n"
+        "*Чтобы скопировать ссылку:*\n"
+        "1. Нажмите и удерживайте ссылку выше\n"
+        "2. Выберите 'Скопировать'\n"
+        "3. Вставьте в адресную строку браузера или в Telegram\n\n"
+        "Подписывайтесь, чтобы быть в курсе новых публикаций!"
+    )
+    
+    await query.edit_message_text(
+        channel_text,
+        # parse_mode="Markdown",
+        reply_markup=get_main_menu_keyboard()
+    )
+
+
 
 async def handle_faq_menu(update: Update, context: ContextTypes.DEFAULT_TYPE):
     """
@@ -204,29 +251,86 @@ async def handle_ask_question(update: Update, context: ContextTypes.DEFAULT_TYPE
 
 
 async def handle_question_input(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    """
-    Обработка введенного вопроса
-    """
+    """Обработка введенного вопроса"""
+    user = update.effective_user
     user_question = update.message.text
     
-    # Здесь будет логика сохранения вопроса в JSON
-    # Пока просто выводим подтверждение
-    # Сохраняем вопрос в user_data для примера
-    context.user_data['last_question'] = {
-        'text': user_question,
-        'timestamp': update.message.date.isoformat()
-    }
+    # ДОБАВИМ ОТЛАДОЧНЫЙ ВЫВОД
+    logger.info(f"=== DEBUG: handle_question_input вызван ===")
+    logger.info(f"bot_data keys: {list(context.bot_data.keys()) if context.bot_data else 'Нет bot_data'}")
+    logger.info(f"application: {hasattr(context, 'application')}")
     
-    await update.message.reply_text(
-        "✅ *Ваш вопрос получен!*\n\n"
-        f"Вопрос: {user_question[:100]}...\n\n"
-        "Автор канала получит ваш вопрос и ответит "
-        "в ближайшее время. Спасибо за обращение!\n\n"
-        "Вернуться в главное меню: /start",
-        parse_mode="Markdown"
+    if hasattr(context, 'application') and context.application:
+        logger.info(f"application.bot_data: {context.application.bot_data if hasattr(context.application, 'bot_data') else 'Нет bot_data'}")
+    
+    # Сохраняем вопрос
+    question_id = question_manager.save_question(
+        user_id=user.id,
+        username=user.username,
+        first_name=user.first_name,
+        question_text=user_question
     )
     
+    if question_id:
+        # СПОСОБ 1: Из bot_data (который мы заполнили в bot.py)
+        admin_id = context.bot_data.get('admin_id')
+        
+        # СПОСОБ 2: Из application.bot_data
+        if not admin_id and hasattr(context, 'application') and hasattr(context.application, 'bot_data'):
+            admin_id = context.application.bot_data.get('admin_id')
+        
+        logger.info(f"=== DEBUG: Найден admin_id = {admin_id} ===")
+        
+        # ВРЕМЕННО: если admin_id всё равно None, используем хардкод
+        if not admin_id:
+            admin_id = 7156086085  # ← ВАШ ID для теста
+            logger.info(f"=== DEBUG: Используем хардкод admin_id = {admin_id} ===")
+        
+        if admin_id:
+            try:
+                # Отправляем БЕЗ Markdown для простоты
+                notification = (
+                    f"📨 Новый вопрос от пользователя\n\n"
+                    f"👤 {user.first_name or ''} "
+                    f"(@{user.username or 'нет username'})\n"
+                    f"🆔 Пользователя: {user.id}\n"
+                    f"🆔 Вопроса: {question_id}\n\n"
+                    f"Текст вопроса:\n{user_question[:500]}"
+                )
+                
+                logger.info(f"=== DEBUG: Отправляем уведомление админу {admin_id} ===")
+                
+                await context.bot.send_message(
+                    chat_id=int(admin_id),
+                    text=notification
+                )
+                logger.info(f"Уведомление отправлено админу {admin_id}")
+            except Exception as e:
+                logger.error(f"Не удалось отправить уведомление админу: {e}")
+                logger.error(f"Тип ошибки: {type(e).__name__}")
+                logger.error(f"Подробности: {str(e)}")
+        
+        # Отправляем подтверждение пользователю
+        await update.message.reply_text(
+            "✅ *Ваш вопрос получен и сохранён!*\n\n"
+            f"ID вопроса: `{question_id}`\n\n"
+            "Автор канала получил уведомление и ответит "
+            "в ближайшее время. Спасибо за обращение!\n\n"
+            "Вернуться в главное меню: /start",
+            parse_mode="Markdown",
+            reply_markup=get_start_keyboard()
+        )
+    else:
+        await update.message.reply_text(
+            "❌ Произошла ошибка при сохранении вопроса. "
+            "Пожалуйста, попробуйте позже.",
+            parse_mode="Markdown",
+            reply_markup=get_start_keyboard()
+        )
+    
     return ConversationHandler.END
+
+
 
 
 async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
@@ -238,6 +342,22 @@ async def handle_cancel(update: Update, context: ContextTypes.DEFAULT_TYPE):
     
     await query.edit_message_text(
         "❌ Ввод вопроса отменен.",
+        reply_markup=get_main_menu_keyboard()
+    )
+    
+    return ConversationHandler.END
+
+
+
+async def handle_start(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Кнопка возврата на страртовую страницу
+    """
+    query = update.callback_query
+    await query.answer()
+    
+    await query.edit_message_text(
+        "✅ Возврат на старт.",
         reply_markup=get_main_menu_keyboard()
     )
     
@@ -303,10 +423,13 @@ def get_faq_menu_keyboard() -> InlineKeyboardMarkup:
             )
         ],
         [
-            InlineKeyboardButton("Вакантный вопрос", callback_data="faq:5")
+            InlineKeyboardButton(
+                "Вакантный вопрос", 
+                callback_data="faq:5"
+            )
         ],
         [
-            InlineKeyboardButton("Назад", callback_data="main_menu"),
+            InlineKeyboardButton("Назад", callback_data="show_faq"),
             InlineKeyboardButton("Главное меню", callback_data="main_menu")
         ]
     ])
@@ -334,6 +457,34 @@ def get_cancel_keyboard() -> InlineKeyboardMarkup:
         [InlineKeyboardButton("Отмена", callback_data="cancel")]
     ])
     return keyboard
+
+
+def get_start_keyboard() -> InlineKeyboardMarkup:
+    """
+    Кнопка возврата на старт
+    """
+    keyboard = InlineKeyboardMarkup([
+        [InlineKeyboardButton("Старт", callback_data="main_menu")]
+    ])
+    return keyboard
+
+async def channel_command(update: Update, context: ContextTypes.DEFAULT_TYPE):
+    """
+    Обработчик команды /channel (для командного меню)
+    """
+    channel_link = "https://t.me/glass_pen/"
+    channel_text = (
+        "📢 Канал 'Стеклянное Перо':\n\n"
+        f"{channel_link}\n\n"
+        "Нажмите на ссылку выше или скопируйте её.\n"
+        "Подписывайтесь, чтобы быть в курсе новых публикаций!"
+    )
+    
+    await update.message.reply_text(
+        channel_text,
+        # parse_mode="Markdown",
+        reply_markup=get_main_menu_keyboard()
+    )
 
 
 # ========== РЕГИСТРАЦИЯ ОБРАБОТЧИКОВ (для совместимости) ==========
@@ -373,8 +524,10 @@ def get_handlers():
         CommandHandler("help", cmd_help),
         CommandHandler("channel", cmd_channel),
         CallbackQueryHandler(handle_main_menu, pattern="^main_menu$"),
+        CallbackQueryHandler(handle_show_channel, pattern="^show_channel$"),
         CallbackQueryHandler(handle_faq_menu, pattern="^show_faq$"),
         CallbackQueryHandler(handle_faq_answer, pattern="^faq:"),
         question_conv_handler,
-        CallbackQueryHandler(handle_cancel, pattern="^cancel$")
+        CallbackQueryHandler(handle_cancel, pattern="^cancel$"),
+        CallbackQueryHandler(handle_start, pattern="^main_menu$")
     ]
